@@ -118,12 +118,14 @@ install_mnemo() {
     mkdir -p "$INSTALL_DIR"/{bin,config,mnemo-sync,mnemo-mcp}
     mkdir -p "$BIN_DIR"
 
-    # Download release
+    # Resolve version
     if [ "$VERSION" = "latest" ]; then
-        DOWNLOAD_URL="https://github.com/$REPO/releases/latest/download/mnemo-$PLATFORM.tar.gz"
-    else
-        DOWNLOAD_URL="https://github.com/$REPO/releases/download/$VERSION/mnemo-$PLATFORM.tar.gz"
+        VERSION=$(curl -s "https://api.github.com/repos/$REPO/releases/latest" | grep '"tag_name"' | sed 's/.*"tag_name": "\(.*\)".*/\1/')
+        [ -z "$VERSION" ] && error "Failed to resolve latest version"
     fi
+
+    # Download release
+    DOWNLOAD_URL="https://github.com/$REPO/releases/download/$VERSION/mnemo-$VERSION-$PLATFORM.tar.gz"
 
     info "Downloading from $DOWNLOAD_URL..."
     curl -fsSL "$DOWNLOAD_URL" | tar -xz -C "$INSTALL_DIR"
@@ -206,6 +208,15 @@ echo "Done."
 SCRIPT
     chmod +x "$INSTALL_DIR/stop.sh"
     ln -sf "$INSTALL_DIR/stop.sh" "$BIN_DIR/mnemo-stop"
+
+    # Create update script
+    cat > "$INSTALL_DIR/update.sh" << 'SCRIPT'
+#!/bin/bash
+REPO="icyyaww/mnemo-releases"
+exec bash <(curl -fsSL "https://raw.githubusercontent.com/$REPO/main/update.sh")
+SCRIPT
+    chmod +x "$INSTALL_DIR/update.sh"
+    ln -sf "$INSTALL_DIR/update.sh" "$BIN_DIR/mnemo-update"
 
     success "Startup scripts created"
 }
